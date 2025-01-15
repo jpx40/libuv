@@ -23,6 +23,7 @@
 
 #ifndef UV_H
 #define UV_H
+#include <_types/_uint8_t.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -460,6 +461,14 @@ struct uv_shutdown_s {
   UV_SHUTDOWN_PRIVATE_FIELDS
 };
 
+
+typedef enum : uint8_t {
+    Pending,
+    Waiting,
+    Finished,
+    Closing,
+    
+} AsyncState;
 
 #define UV_HANDLE_FIELDS                                                      \
   /* public */                                                                \
@@ -943,6 +952,7 @@ UV_EXTERN int uv_idle_stop(uv_idle_t* idle);
 struct uv_async_s {
   UV_HANDLE_FIELDS
   UV_ASYNC_PRIVATE_FIELDS
+  AsyncState state;
 };
 
 UV_EXTERN int uv_async_init(uv_loop_t*,
