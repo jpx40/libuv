@@ -1,0 +1,135 @@
+package uv
+import "core:c"
+
+foreign import libuv {
+			"libuv.a",
+}
+
+
+
+ ReqType :: enum c.int {
+  UV_UNKNOWN_REQ = 0,
+  UV_REQ_TYPE_PRIVATE,
+  UV_REQ_TYPE_MAX
+} 
+
+UvRunMode :: enum c.int {
+  UV_RUN_DEFAULT = 0,
+  UV_RUN_ONCE,
+  UV_RUN_NOWAIT,
+} 
+
+ActiveReqs :: union {
+ rawptr,
+   c.uint
+} 
+
+ UvQueue :: struct  {
+ next: ^UvQueue,
+prev: ^UvQueue
+};
+TimerHeap :: struct {                                                                    
+   min: rawptr                                                                
+   nelts: c.uint                                                    
+}   
+ Loop :: struct {
+  /* User data - use this for whatever. */
+   data: rawptr,
+  /* Loop reference counting. */
+   active_handles: c.uint,
+ handle_queue: UvQueue,
+  active_reqs: ActiveReqs,
+  /* Internal storage for future extensions. */
+  internal_fields: rawptr,
+  /* Internal flag to signal loop stop. */
+  stop_flag: c.uint,
+
+  flags: c.ulong,                                                      
+   backend_fd: c.int                                                   
+   pending_queue: UvQueue,                                      
+  watcher_queue: UvQueue,                                     
+  watchers : [^]UvIo,                                               
+   nwatchers: c.uint,                                                 
+   nfds: c.uint,                                                      
+ wq: UvQueue                                               
+  uv_mutex_t wq_mutex;                                                
+  uv_async_t wq_async;                                                
+  uv_rwlock_t cloexec_lock;                                           
+  uv_handle_t* closing_handles;                                       
+  process_handles: UvQueue,                                  
+  prepare_handles: UvQueue,                                  
+  check_handles: UvQueue,                                  
+ idle_handles: UvQueue,                                    
+async_handles: UvQueue,                                     
+  async_unused: rawptr, /* TODO(bnoordhuis) Remove in libuv v2. */     
+   async_io_watcher: UvIo   ,                                             
+   async_wfd: c.int          ,                                                
+   timer_heap: TimerHeap,                                                      
+timer_counter: c.uint64_t,                                                   
+  time: c.int        ,                                                   
+signal_pipefd: [2]c.int,                                                      
+    signal_io_watcher: UvIo,
+  uv_signal_t child_watcher;                                                  
+  emfile_fd: c.int 
+   inotify_read_watcher: UvIo                                             
+   inotify_watchers: rawptr                                                     
+  int inotify_fd: c.int 
+}
+
+
+
+uv_signal_cb :: proc (handle: UvSignal, signum: c.int) ---
+UvSignal :: struct{
+/* public */                                                                
+ data: rawptr    ,                                                          
+ /* read-only */                                                  
+ loop: ^Loop    ,                                                     
+ type: ReqType   ,                                                  
+ /* private */                                                          \
+ uv_close_cb close_cb;                                                       \
+ struct uv__queue handle_queue;                                              \
+ union {                                                                     \
+   int fd;                                                                   \
+   void* reserved[4];                                                        \
+ } u;
+ uv_handle_t* next_closing;                                                  \
+ unsigned int flags;  
+  uv_signal_cb signal_cb;
+  int signum;
+  UV_SIGNAL_PRIVATE_FIELDS
+}
+
+uv_io_cb :: proc(loop: ^Loop,w: ^UvIo, events :c.uint) ---
+
+ UvIo :: struct  {
+  cb: uv_io_cb,
+ pending_queue :UvQueue
+watcher_queue: UvQueue
+ pevents: c.uint /* Pending event mask i.e. mask at next tick. */
+ events: c.uint  /* Current event mask. */
+   fd: int
+watchers: UvQueue   ,
+     wd  : c.int
+
+}
+foreign libuv {
+    
+    @(link_name="uv_version") version ::proc() -> c.uint ---
+    @(link_name="uv_version_string") version_string ::proc() -> cstring ---
+    @(link_name="uv_library_shutdown") library_shutdown :: proc() ---
+    @(link_name="uv_library_shutdown") uv_library_shutdown :: proc() -> Loop ---
+    
+    
+    UV_EXTERN int uv_signal_init(uv_loop_t* loop, uv_signal_t* handle);
+    UV_EXTERN int uv_signal_start(uv_signal_t* handle,
+                                  uv_signal_cb signal_cb,
+                                  int signum);
+    UV_EXTERN int uv_signal_start_oneshot(uv_signal_t* handle,
+                                          uv_signal_cb signal_cb,
+                                          int signum);
+    UV_EXTERN int uv_signal_stop(uv_signal_t* handle);
+    
+    UV_EXTERN void uv_loadavg(double avg[3]);
+
+}
+
